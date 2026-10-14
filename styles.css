@@ -1,0 +1,586 @@
+:root {
+    --hud-scale: 0.88;
+
+    --ivory: #f4efe6;
+    --ivory-dim: rgba(244, 239, 230, 0.58);
+    --ivory-faint: rgba(244, 239, 230, 0.2);
+
+    --violet: #8b5cff;
+    --blue: #2ea8ff;
+    --tick: rgba(155, 184, 255, 0.85);
+
+    --red: #e3262e;
+    --red-hi: #ff4a40;
+    --green: #5fe39a;
+
+    /* dipakai oleh busur fuel (tidak diubah) */
+    --gold: #d9b86c;
+
+    --font: "Bahnschrift", "Segoe UI", "Arial Narrow", Arial, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    background-color: transparent !important;
+    font-family: var(--font);
+    color: var(--ivory);
+}
+
+/* ---------- Posisi HUD ---------- */
+
+.hud {
+    position: fixed;
+    right: 26px;
+    bottom: 40px;
+    width: 340px;
+    height: 340px;
+    transform: scale(var(--hud-scale));
+    transform-origin: 100% 100%;
+}
+
+.hud.hidden { display: none; }
+
+.cluster {
+    position: relative;
+    width: 340px;
+    height: 340px;
+}
+
+/* ---------- Bezel neon dan permukaan dial ---------- */
+
+.halo {
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    background: radial-gradient(circle closest-side,
+        transparent 86%,
+        rgba(139, 92, 255, 0.42) 92%,
+        rgba(46, 168, 255, 0.24) 96%,
+        transparent 100%);
+    pointer-events: none;
+    animation: flicker 3.4s linear infinite;
+}
+
+@keyframes flicker {
+    0%, 100% { opacity: 0.9; }
+    8%       { opacity: 0.5; }
+    10%      { opacity: 1; }
+    38%      { opacity: 0.8; }
+    40%      { opacity: 0.45; }
+    42%      { opacity: 0.95; }
+    70%      { opacity: 0.8; }
+}
+
+.bezel {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: #0a0b14;
+    box-shadow: 0 0 22px rgba(139, 92, 255, 0.45), 0 0 48px rgba(46, 168, 255, 0.22), 0 10px 28px rgba(0, 0, 0, 0.65);
+}
+
+.bezel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg,
+        #8b5cff, #2ea8ff, #101326 22%, #101326 38%,
+        #8b5cff 55%, #2ea8ff 72%, #101326 88%, #8b5cff);
+    animation: spin 7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.face {
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 50% 26%, rgba(139, 92, 255, 0.22), transparent 55%),
+        radial-gradient(circle at 50% 108%, rgba(46, 168, 255, 0.2), transparent 50%),
+        radial-gradient(circle at 50% 50%, #0e1020, #06070d 78%);
+    box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.85);
+}
+
+.dial {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.4s;
+}
+
+.hair {
+    fill: none;
+    stroke: var(--violet);
+    stroke-opacity: 0.3;
+    stroke-width: 1;
+}
+
+/* ---------- Tachometer (merah) ---------- */
+
+.arc-track,
+.arc-red,
+.arc-rpm {
+    fill: none;
+    stroke-width: 12;
+}
+
+.arc-track { stroke: rgba(244, 239, 230, 0.07); }
+.arc-red   { stroke: rgba(227, 38, 46, 0.35); }
+
+.arc-rpm {
+    stroke: var(--red-hi);
+    filter: drop-shadow(0 0 5px rgba(227, 38, 46, 0.7));
+    transition: stroke-dasharray 0.12s linear;
+}
+
+.hud.sweeping .arc-rpm { transition: stroke-dasharray 0.5s ease-out; }
+
+.hud.redline .arc-rpm {
+    filter: drop-shadow(0 0 10px rgba(255, 60, 50, 0.95));
+}
+
+#pointer {
+    fill: #ff6a5e;
+    filter: drop-shadow(0 0 5px rgba(227, 38, 46, 1));
+    transform-origin: 170px 170px;
+    transform: rotate(135deg);
+    transition: transform 0.12s linear;
+}
+
+.hud.sweeping #pointer { transition: transform 0.5s ease-out; }
+
+.tick       { stroke: var(--ivory-faint); stroke-width: 1.4; }
+.tick.major { stroke: var(--tick); stroke-width: 2.4; }
+.tick.red   { stroke: var(--red-hi); stroke-opacity: 0.9; }
+
+.tick-label {
+    fill: rgba(200, 212, 255, 0.62);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+.tick-label.red { fill: var(--red-hi); }
+
+/* ---------- Busur health dan fuel (tidak diubah) ---------- */
+
+.side-track,
+.side-arc {
+    fill: none;
+    stroke-width: 5;
+}
+
+.side-track { stroke: rgba(244, 230, 230, 0.1); }
+
+.side-arc {
+    stroke: var(--ivory);
+    transition: stroke-dasharray 0.25s ease-out, stroke 0.25s;
+}
+
+/* Warna busur */
+#fuelArc { stroke: #2b73d8; }
+#healthArc { stroke: #00b106; }
+
+/* Warna angka */
+#fuelInfo { fill: hsl(48, 78%, 47%); }
+#healthInfo { fill: #ff0000; }
+
+/* Angka tetap merah saat kondisi rendah */
+#fuelInfo.low,
+#healthInfo.low {
+    fill: #ff4a40;
+}
+
+
+.side-arc.low { stroke: var(--red-hi); }
+
+.info {
+    fill: var(--ivory-dim);
+    font-family: var(--font);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.info.right text { text-anchor: end; }
+.info.low { fill: var(--red-hi); animation: low-blink 1s steps(1) infinite; }
+
+@keyframes low-blink {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.4; }
+}
+
+/* ---------- Medali foto ---------- */
+
+.medallion {
+    position: absolute;
+    left: 130px;
+    top: 60px;
+    width: 80px;
+    height: 80px;
+}
+
+.medallion::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px #b9a3ff, 0 0 28px 6px var(--violet);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.hud.ignite .medallion::after {
+    animation: ignite 0.9s ease-out;
+}
+
+@keyframes ignite {
+    0%   { opacity: 1; transform: scale(0.9); }
+    100% { opacity: 0; transform: scale(1.45); }
+}
+
+.medallion-inner {
+    --rpm: 0;
+    --spd: 0;
+    position: absolute;
+    inset: 0;
+    transform: scale(calc(1 + var(--rpm) * 0.04));
+    transition: transform 0.12s linear;
+}
+
+.medallion-inner svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.m-track,
+.m-arc {
+    fill: none;
+    stroke-width: 4;
+}
+
+.m-track { stroke: rgba(244, 239, 230, 0.12); }
+
+.m-arc {
+    stroke: url(#spdGrad);
+    filter: drop-shadow(0 0 3px rgba(139, 92, 255, 0.8));
+    transition: stroke-dasharray 0.15s linear;
+}
+
+.m-arc.fast {
+    stroke: var(--red-hi);
+    filter: drop-shadow(0 0 4px rgba(227, 38, 46, 0.9));
+}
+
+.medallion-inner img {
+    position: absolute;
+    left: 11px;
+    top: 11px;
+    width: 58px;
+    height: 58px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid var(--violet);
+    box-shadow: 0 0 calc(4px + var(--rpm) * 20px) rgba(139, 92, 255, calc(0.3 + var(--rpm) * 0.5));
+    transition: filter 0.6s, box-shadow 0.12s linear, border-color 0.2s;
+}
+
+.hud.engine-off .medallion-inner img {
+    filter: grayscale(1) brightness(0.45);
+    box-shadow: none;
+}
+
+.hud.redline .medallion {
+    animation: shake 0.09s linear infinite;
+}
+
+.hud.redline .medallion-inner img {
+    border-color: var(--red-hi);
+    box-shadow: 0 0 22px rgba(227, 38, 46, 0.75);
+}
+
+@keyframes shake {
+    0%   { transform: translate(0, 0); }
+    25%  { transform: translate(1px, -1px); }
+    50%  { transform: translate(-1px, 1px); }
+    75%  { transform: translate(1px, 1px); }
+    100% { transform: translate(0, 0); }
+}
+
+.hud.no-belt .m-track {
+    stroke: var(--red);
+    animation: belt-blink 0.9s steps(1) infinite;
+}
+
+@keyframes belt-blink {
+    0%   { stroke-opacity: 1; }
+    50%  { stroke-opacity: 0.2; }
+}
+
+/* ---------- Sein ---------- */
+
+.indicators {
+    position: absolute;
+    top: 88px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 94px;
+}
+
+.arrow {
+    width: 26px;
+    height: 24px;
+    fill: var(--ivory-faint);
+}
+
+.arrow.right { transform: scaleX(-1); }
+
+.arrow.on {
+    fill: var(--green);
+    filter: drop-shadow(0 0 6px rgba(95, 227, 154, 0.9));
+}
+
+.hud.blink .arrow.on { animation: arrow-blink 0.7s steps(1) infinite; }
+
+@keyframes arrow-blink {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.15; }
+}
+
+/* ---------- Kecepatan ---------- */
+
+.speed-wrap {
+    position: absolute;
+    top: 144px;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: opacity 0.4s;
+    color: #d61515;
+}
+
+.speed {
+    font-size: 78px;
+    line-height: 0.9;
+    font-weight: 700;
+    font-style: italic;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+.unit {
+    margin-top: 6px;
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    color: var(--blue);
+}
+
+/* ---------- Gear (satu angka besar) ---------- */
+
+.gear-badge {
+    position: absolute;
+    left: 50%;
+    top: 246px;
+    transform: translateX(-50%);
+    width: 58px;
+    height: 46px;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, rgba(139, 92, 255, 0.24), rgba(46, 168, 255, 0.1));
+    border: 1px solid rgba(139, 92, 255, 0.6);
+    box-shadow: 0 0 14px rgba(139, 92, 255, 0.35), inset 0 0 10px rgba(46, 168, 255, 0.14);
+    transition: opacity 0.4s;
+}
+
+.gear-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--blue);
+}
+
+.gear {
+    font-size: 28px;
+    line-height: 1;
+    font-weight: 700;
+    font-style: italic;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(139, 92, 255, 0.95);
+}
+
+.gear.pop { animation: gear-pop 0.22s ease-out; }
+
+@keyframes gear-pop {
+    0%   { transform: scale(1.5); opacity: 0.4; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* ---------- Plat ikon status di bawah dial ---------- */
+
+.plate {
+    position: absolute;
+    left: 50%;
+    bottom: -16px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 5px 6px;
+    border-radius: 999px;
+    background: #090a12;
+    border: 1px solid rgba(139, 92, 255, 0.5);
+    box-shadow: 0 0 14px rgba(139, 92, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+}
+
+.ico {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    color: var(--ivory-faint);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.03);
+    transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+
+.ico svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.ico .keyhole { fill: currentColor; stroke: none; }
+
+.ico.on {
+    color: var(--green);
+    border-color: rgba(95, 227, 154, 0.45);
+    background: rgba(95, 227, 154, 0.1);
+}
+
+.ico.on svg { filter: drop-shadow(0 0 3px currentColor); }
+
+.ico.high {
+    color: var(--blue);
+    border-color: rgba(46, 168, 255, 0.55);
+    background: rgba(46, 168, 255, 0.12);
+}
+
+.ico.high svg { filter: drop-shadow(0 0 3px currentColor); }
+
+.ico.bad {
+    color: var(--red-hi);
+    border-color: var(--red);
+    background: rgba(227, 38, 46, 0.16);
+    animation: chip-blink 0.9s steps(1) infinite;
+}
+
+#lock.on {
+    color: #a98bff;
+    border-color: rgba(139, 92, 255, 0.55);
+    background: rgba(139, 92, 255, 0.14);
+}
+
+/* Lampu: low beam atau high beam */
+#headlights .beam-high { display: none; }
+#headlights.high .beam-high { display: inline; }
+#headlights.high .beam-low { display: none; }
+
+/* Kunci: tertutup atau terbuka */
+#lock .lock-open { display: inline; }
+#lock .lock-closed { display: none; }
+#lock.on .lock-open { display: none; }
+#lock.on .lock-closed { display: inline; }
+
+@keyframes chip-blink {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.3; }
+}
+
+.sep {
+    width: 1px;
+    height: 14px;
+    margin: 0 2px;
+    background: rgba(139, 92, 255, 0.5);
+}
+
+.odo {
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--blue);
+}
+
+/* ---------- Peringatan seatbelt ---------- */
+
+.warning {
+    position: absolute;
+    left: 50%;
+    top: -42px;
+    transform: translateX(-50%);
+    padding: 7px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--red);
+    background: rgba(139, 92, 255, 0.5);
+    color: #ff1100;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.warning.show {
+    opacity: 1;
+    animation: warn-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes warn-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(227, 38, 46, 0); }
+    50%      { box-shadow: 0 0 18px 2px rgba(227, 38, 46, 0.6); }
+}
+
+/* ---------- Mesin mati ---------- */
+
+.hud.engine-off .dial,
+.hud.engine-off .speed-wrap,
+.hud.engine-off .gear-badge {
+    opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .warning.show, .ico.bad, .info.low, .hud.blink .arrow.on, .halo, .bezel::before,
+    .hud.redline .medallion, .hud.no-belt .m-track { animation: none; }
+}
