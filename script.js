@@ -20,7 +20,18 @@ const CONFIG = {
     lowHealth: 0.3,          // di bawah ini health jadi merah
     blinkIndicators: true,   // lampu sein berkedip lewat CSS
     startupSweep: true,      // jarum menyapu penuh saat mesin dinyalakan
-    odometerUnit: 'mi'       // 'mi' atau 'km' (input setOdometer tetap dalam mil)
+    odometerUnit: 'mi',      // 'mi' atau 'km' (input setOdometer tetap dalam mil)
+
+    // Format input setRPM: 'auto' = nilai 0 sampai 1 dibaca apa adanya, nilai di atas 1.5
+    // dianggap RPM asli (misal 2500) dan dibagi (rpmScaleMax x 1000). Bisa juga 'normalized' atau 'raw'.
+    rpmInput: 'auto',
+
+    // true = ikon kunci disembunyikan sampai server pertama kali memanggil setLocked().
+    // false = ikon kunci selalu tampil.
+    hideLockUntilUsed: true,
+
+    // true = selalu tampilkan panel debug. Di FiveM cukup tambahkan ?debug di akhir URL.
+    debug: false
 };
 
 /* ========================================================== */
@@ -50,6 +61,15 @@ const ARC_SIDE = R_SIDE * (50 * Math.PI / 180);   // busur 50 derajat
 const C_SPD = 2 * Math.PI * 37;
 
 const clamp01 = n => Math.min(1, Math.max(0, Number(n) || 0));
+
+// Menerima true/false, 1/0, dan teks "true"/"false"/"1"/"0" supaya tidak salah baca.
+function toBool(v) {
+    if (typeof v === 'string') {
+        const t = v.trim().toLowerCase();
+        return !(t === '' || t === 'false' || t === '0' || t === 'off' || t === 'null' || t === 'undefined');
+    }
+    return !!v;
+}
 
 /* ---------- Seatbelt alarm ---------- */
 
@@ -114,7 +134,7 @@ function sweep() {
  */
 function setEngine(on) {
     const was = state.engine;
-    state.engine = !!on;
+    state.engine = toBool(on);
 
     elements.engine.classList.toggle('on', state.engine);
     elements.hud.classList.toggle('engine-off', !state.engine);
@@ -150,7 +170,9 @@ function setSpeed(speed) {
  * @param {number} rpm - Nilai RPM dari 0 sampai 1.
  */
 function setRPM(rpm) {
-    lastRpm = clamp01(rpm);
+    const n = Number(rpm) || 0;
+    const raw = CONFIG.rpmInput === 'raw' || (CONFIG.rpmInput === 'auto' && n > 1.5);
+    lastRpm = clamp01(raw ? n / (CONFIG.rpmScaleMax * 1000) : n);
     if (!sweeping) applyRpm(lastRpm);
 }
 
@@ -197,6 +219,7 @@ function setGear(gear) {
  * @param {number} state - 0: Off, 1: On, 2: High Beam.
  */
 function setHeadlights(level) {
+    level = Number(level) || 0;
     const el = elements.headlights;
     el.classList.toggle('on', level === 1);
     el.classList.toggle('high', level === 2);
@@ -206,7 +229,7 @@ function setHeadlights(level) {
  * @param {boolean} state - true untuk menyalakan sein kiri.
  */
 function setLeftIndicator(on) {
-    state.left = !!on;
+    state.left = toBool(on);
     elements.indLeft.classList.toggle('on', state.left);
 }
 
@@ -214,7 +237,7 @@ function setLeftIndicator(on) {
  * @param {boolean} state - true untuk menyalakan sein kanan.
  */
 function setRightIndicator(on) {
-    state.right = !!on;
+    state.right = toBool(on);
     elements.indRight.classList.toggle('on', state.right);
 }
 
@@ -222,7 +245,7 @@ function setRightIndicator(on) {
  * @param {boolean} state - true jika seatbelt dipakai.
  */
 function setSeatbelts(on) {
-    state.seatbelts = !!on;
+    state.seatbelts = toBool(on);
     updateSeatbeltWarning();
 }
 
@@ -231,7 +254,8 @@ function setSeatbelts(on) {
  * @param {boolean} locked - true jika kendaraan terkunci.
  */
 function setLocked(locked) {
-    state.locked = !!locked;
+    elements.lock.style.display = '';   // tampilkan ikon begitu server mengirim status kunci
+    state.locked = toBool(locked);
     elements.lock.classList.toggle('on', state.locked);
 }
 
@@ -257,6 +281,7 @@ function setOdometer(distance) {
  * @param {boolean} visible
  */
 function setVisible(visible) {
+    visible = toBool(visible);
     elements.hud.classList.toggle('hidden', !visible);
     if (!visible) setAlarm(false);
     else updateSeatbeltWarning();
@@ -318,32 +343,70 @@ function buildArcs() {
     document.getElementById('fuelTrack').style.strokeDasharray = `${ARC_SIDE} ${C_SIDE}`;
 }
 
-/* ---------- Mode demo: buka index.html?demo untuk tes di browser ---------- */
+/* ---------- Pesan dari server (opsional) dan panel debug ---------- */
 
-function runDemo() {
-    let t = 0;
-    setEngine(true);
-    setOdometer(1234.5);
-    setHealth(0.88);
+const API_NAMES = ['setEngine', 'setSpeed', 'setRPM', 'setFuel', 'setHealth', 'setGear',
+    'setHeadlights', 'setLeftIndicator', 'setRightIndicator', 'setSeatbelts',
+    'setSpeedMode', 'setOdometer', 'setLocked', 'setVisible'];
 
-    setInterval(() => {
-        t += 0.05;
-        const sp = (Math.sin(t * 0.4 - 1.5) + 1) / 2;
-        setSpeed(sp * 82);
+// Jika server mengirim lewat postMessage, contoh: { action: 'setLocked', value: true }
+window.addEventListener('message', ev => {
+    const d = ev.data;
+    if (!d || typeof d !== 'object') return;
+    const name = d.action || d.type || d.fn || d.name;
+    if (!API_NAMES.includes(name) || typeof window[name] !== 'function') return;
+    const args = Array.isArray(d.args) ? d.args : [d.value !== undefined ? d.value : (d.state !== undefined ? d.state : d.data)];
+    window[name](...args);
+});
 
-        const band = sp * CONFIG.gearCount;
-        const gear = Math.min(CONFIG.gearCount, Math.floor(band) + 1);
-        setGear(sp < 0.02 ? 0 : gear);
-        setRPM(0.3 + (band % 1) * 0.62);
+function installDebug() {
+    const log = {};
+    const errors = [];
+    const messages = [];
 
-        const s = Math.floor(t);
-        setLeftIndicator(s % 12 < 3);
-        setRightIndicator(s % 12 >= 6 && s % 12 < 9);
-        setHeadlights(Math.floor(t / 8) % 3);
-        setSeatbelts(Math.floor(t / 14) % 2 === 1);
-        setLocked(Math.floor(t / 10) % 2 === 0);
-        setFuel(0.62 - (t % 60) / 200);
-    }, 50);
+    const panel = document.createElement('pre');
+    panel.style.cssText = 'position:fixed;top:8px;left:8px;margin:0;padding:8px 10px;z-index:9999;' +
+        'background:rgba(0,0,0,.78);color:#8ff0a4;font:12px/1.35 Consolas,monospace;border-radius:6px;' +
+        'pointer-events:none;max-width:420px;white-space:pre-wrap';
+    document.body.appendChild(panel);
+
+    let queued = false;
+    const render = () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+            queued = false;
+            const rows = API_NAMES.map(n => {
+                const e = log[n];
+                return e ? `${n.padEnd(18)} ${e.args.map(a => JSON.stringify(a)).join(', ')}  x${e.count}`
+                         : `${n.padEnd(18)} (belum dipanggil)`;
+            });
+            panel.textContent = 'DEBUG\n' + rows.join('\n') +
+                (messages.length ? '\n\nMESSAGE:\n' + messages.join('\n') : '') +
+                (errors.length ? '\n\nERROR:\n' + errors.slice(-3).join('\n') : '');
+        });
+    };
+
+    API_NAMES.forEach(name => {
+        const original = window[name];
+        window[name] = function (...args) {
+            const e = log[name] || (log[name] = { args, count: 0 });
+            e.args = args;
+            e.count++;
+            render();
+            return original.apply(this, args);
+        };
+    });
+
+    window.addEventListener('error', ev => { errors.push(ev.message); render(); });
+    window.addEventListener('message', ev => {
+        let text;
+        try { text = JSON.stringify(ev.data); } catch (e) { text = String(ev.data); }
+        messages.push(text.slice(0, 110));
+        if (messages.length > 4) messages.shift();
+        render();
+    });
+    render();
 }
 
 /* ---------- Inisialisasi ---------- */
@@ -391,10 +454,11 @@ function init() {
     setLeftIndicator(false);
     setRightIndicator(false);
     setSeatbelts(false);
-    setLocked(false);
     setOdometer(0);
 
-    if (/[?&]demo\b/.test(location.search)) runDemo();
+    if (CONFIG.hideLockUntilUsed) elements.lock.style.display = 'none';
+
+    if (CONFIG.debug || /[?&]debug\b/.test(location.search)) installDebug();
 }
 
 if (document.readyState === 'loading') {
