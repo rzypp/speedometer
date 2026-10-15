@@ -455,7 +455,6 @@ function init() {
     setRightIndicator(false);
     setSeatbelts(false);
     setOdometer(0);
-    setLocked(true);
 
     if (CONFIG.hideLockUntilUsed) elements.lock.style.display = 'none';
 
