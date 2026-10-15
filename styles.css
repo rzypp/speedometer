@@ -215,8 +215,8 @@ body {
 .info {
     fill: var(--ivory-dim);
     font-family: var(--font);
-    font-size: 10px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
 }
 
 .info.right text { text-anchor: end; }
