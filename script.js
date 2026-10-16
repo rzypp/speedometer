@@ -4,8 +4,8 @@
 const CONFIG = {
     // Suara peringatan seatbelt. Kosongkan ('') kalau belum ada file audionya.
     // Nanti isi dengan nama file, contoh: 'seatbelt.mp3'
-    seatbeltSound: '',
-    seatbeltVolume: 0.6,
+    seatbeltSound: 'alarmbelt.mp3',
+    seatbeltVolume: 1,
 
     // true  = peringatan hanya aktif kalau mesin hidup
     // false = aktif terus selama seatbelt belum dipakai
